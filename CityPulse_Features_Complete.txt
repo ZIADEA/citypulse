@@ -1,0 +1,631 @@
+╔══════════════════════════════════════════════════════════════════════════════════╗
+║           CITYPULSE LOGISTICS — CATALOGUE COMPLET DES FONCTIONNALITÉS          ║
+║                    & SERVICES DE L'APPLICATION                                  ║
+║                    Version 5.0 — Niveau Startup / Enterprise                   ║
+╚══════════════════════════════════════════════════════════════════════════════════╝
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BLOC 0 — DONNÉES D'ENTRÉE (INPUTS) DE L'APPLICATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+0.1 Vue d'ensemble des inputs
+  L'application reçoit 3 types d'inputs distincts :
+  (A) Données importées via fichiers CSV/JSON (clients, véhicules)
+  (B) Données saisies manuellement dans l'interface
+  (C) Paramètres de simulation choisis par l'utilisateur dans l'interface
+
+  IMPORTANT — Trafic & Météo :
+  - La météo et le trafic NE sont PAS des données live/temps réel
+  - Ce sont des coefficients multiplicateurs choisis manuellement par l'utilisateur
+  - Exemple : l'utilisateur sélectionne "Heure de pointe ×1.7" dans un menu
+  - Ce choix est appliqué par l'algorithme pour ajuster les temps de trajet
+  - Aucune API externe météo ou trafic n'est nécessaire
+
+0.2 Inputs Type A — Fichiers importés
+  Clients (points de livraison) :
+  - Source principale : fichier CSV Solomon VRPTW (benchmark académique standard)
+  - Colonnes CSV : CUST_NO, XCOORD, YCOORD, DEMAND, READY_TIME, DUE_TIME,
+    SERVICE_TIME
+  - Import via QFileDialog → prévisualisation 5 lignes → confirmation → insertion SQLite
+
+  Véhicules :
+  - Source : fichier CSV créé manuellement ou importé
+  - Colonnes : ID, immatriculation, type, capacite_kg, capacite_m3,
+    vitesse_kmh, cout_par_km, depot_assigne
+
+0.3 Inputs Type B — Saisie manuelle dans l'interface
+  - Coordonnées GPS du dépôt (adresse + latitude + longitude)
+  - Informations véhicule (si pas d'import CSV)
+  - Instructions spéciales par client
+  - Paramètres des algorithmes (max itérations 2-opt, temps CPU OR-Tools)
+
+0.4 Inputs Type C — Paramètres de simulation (choix utilisateur)
+  Trafic (radio buttons dans l'interface) :
+    → Fluide        × 1.0
+    → Chargé        × 1.3
+    → Heure de pointe × 1.7
+    → Accident      × 2.2
+    → Aléatoire     × [1.0 – 2.5]
+    → Personnalisé  × [1.0 – 5.0] (saisie libre)
+
+  Météo (radio buttons dans l'interface) :
+    → Ensoleillé    × 1.0
+    → Pluie légère  × 1.1
+    → Pluie forte   × 1.25
+    → Neige         × 1.6
+    → Verglas       × 2.0
+
+  Coefficient final appliqué aux temps de trajet = trafic × météo
+  Exemple : Heure de pointe + Pluie forte = 1.7 × 1.25 = ×2.125
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BLOC 0-BIS — DATASETS UTILISÉS & INSTRUCTIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+0-BIS.1 Dataset 1 — Solomon VRPTW Benchmark (Principal)
+  Source    : http://w.cba.neu.edu/~msolomon/problems.htm
+  Kaggle    : https://www.kaggle.com/datasets/masud7866/solomon-vrptw-benchmark
+  Licence   : Académique libre — usage autorisé sans restriction
+  Format    : CSV / TXT
+  Taille    : 56 instances × 100 clients chacune
+
+  Structure des colonnes :
+    CUST_NO      → ID client (0 = dépôt)
+    XCOORD       → Coordonnée X (longitude simulée)
+    YCOORD       → Coordonnée Y (latitude simulée)
+    DEMAND       → Demande en unités de charge (kg)
+    READY_TIME   → Heure d'ouverture de la fenêtre horaire
+    DUE_TIME     → Heure de fermeture de la fenêtre horaire
+    SERVICE_TIME → Durée de déchargement au client (minutes)
+
+  Instances recommandées pour les 3 scénarios de démo :
+    Scénario 10 clients  → prendre les 10 premières lignes de C101.txt
+    Scénario 50 clients  → prendre les 50 premières lignes de R101.txt
+    Scénario 100 clients → instance complète RC101.txt (clients clustered+random)
+
+  Catégories disponibles :
+    C1xx / C2xx → Clients géographiquement groupés (clustered)
+    R1xx / R2xx → Clients répartis aléatoirement (random)
+    RC1xx / RC2xx → Mix des deux types
+
+  Instructions d'utilisation dans l'application :
+    1. Placer les fichiers .txt dans le dossier assets/demo_data/
+    2. Le parser CSV lit les colonnes en ignorant les lignes commentaires (#)
+    3. XCOORD / YCOORD sont des coordonnées cartésiennes arbitraires
+       → Les convertir en GPS réels (Casablanca par défaut) avec la formule :
+         latitude  = 33.5731 + (YCOORD - 50) * 0.01
+         longitude = -7.5898 + (XCOORD - 50) * 0.01
+    4. DEMAND → utiliser directement comme demande_kg dans la BDD
+    5. READY_TIME / DUE_TIME → fenêtres horaires en minutes depuis 00:00
+
+0-BIS.2 Dataset 2 — Real-World VRP avec contraintes réelles
+  Source    : https://data.4tu.nl/datasets/1e23b9d7-58ce-4567-a5e5-14b7cebbb3bc
+  Auteur    : Emir Žunić (2019)
+  Licence   : Open Data — usage libre avec citation
+  Format    : Excel (.xls) — 9 fichiers
+  Contenu   : Données GPS réelles d'une entreprise de distribution (Bosnie)
+
+  Ce dataset contient :
+    - Coordonnées GPS réelles (latitude/longitude directement utilisables)
+    - Contraintes de capacité véhicule réelles
+    - Fenêtres horaires issues d'opérations réelles
+    - Solutions de référence pour valider tes algorithmes
+
+  Instructions d'utilisation dans l'application :
+    1. Convertir les fichiers .xls en CSV via pandas :
+       df = pd.read_excel('fichier.xls')
+       df.to_csv('fichier.csv', index=False)
+    2. Mapper les colonnes vers le format interne CityPulse :
+       GPS réel → latitude / longitude directement (pas de conversion nécessaire)
+    3. Utiliser ce dataset pour la démonstration "mode réel"
+       (contrairement à Solomon qui est "mode démo académique")
+
+0-BIS.3 Utilisation combinée des deux datasets
+  Mode démonstration (bouton "Charger données démo") :
+    → Utilise Solomon VRPTW (instances C101, R101, RC101)
+    → Données propres, bien connues, comparaison possible avec littérature
+    → Scénarios 10 / 50 / 100 clients prêts à l'emploi
+
+  Mode réel (import CSV par l'utilisateur) :
+    → Utilise le dataset Real-World VRP (Žunić 2019)
+    → GPS réels, contraintes réelles, valide l'application en conditions réelles
+
+  Pour le rapport technique :
+    → Mentionner les deux datasets dans la section "Description des données"
+    → Comparer les résultats des 3 algorithmes sur Solomon C101 (référence académique)
+    → Les solutions optimales de référence sont disponibles sur sintef.no
+      pour valider que ton OR-Tools donne des résultats corrects
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BLOC 1 — AUTHENTIFICATION & GESTION DES UTILISATEURS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1.1 Authentification sécurisée
+  - Connexion par identifiant + mot de passe (hash SHA-256 + salt)
+  - Déconnexion explicite avec confirmation
+  - Session persistante jusqu'à déconnexion (token local)
+  - Blocage après 5 tentatives échouées (cooldown 30s)
+  - Indicateur de force du mot de passe à la création
+
+1.2 Gestion des rôles
+  - Rôle Administrateur : accès total, gestion utilisateurs, paramètres système
+  - Rôle Gestionnaire : accès complet fonctionnel, création tournées
+  - Rôle Superviseur : consultation uniquement, export rapports
+  - Rôle Chauffeur : accès mobile simplifié, lecture feuille de route assignée
+
+1.3 Profils utilisateurs
+  - Création / modification / suppression de comptes
+  - Photo de profil (avatar)
+  - Préférences individuelles (langue, thème, notifications)
+  - Journal de connexions par utilisateur (date, heure)
+  - Réinitialisation de mot de passe par l'administrateur
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BLOC 2 — GESTION DES DONNÉES MÉTIER (CRUD COMPLET)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+2.1 Gestion des clients (points de livraison)
+  - CRUD complet : créer, lire, modifier, supprimer
+  - Champs : ID auto, nom, adresse complète, latitude/longitude, demande (kg),
+    volume (m³), fenêtre horaire [début – fin], priorité [1–5], type de client,
+    instructions spéciales, contact, téléphone, email
+  - Import CSV Solomon VRPTW (avec mapping automatique des colonnes)
+  - Import JSON (fichier de configuration complet)
+  - Import depuis API externe (geocoding adresse → coordonnées GPS auto)
+  - Export CSV, JSON
+  - Recherche full-text (nom, adresse, ID)
+  - Filtres multiples : priorité, fenêtre horaire, statut livraison
+  - Tri par colonne (toutes colonnes)
+  - Pagination configurable (10 / 25 / 50 / 100 par page)
+  - Dupliquer un client existant
+  - Archiver un client (soft delete)
+  - Vue carte : localiser un client sur la carte au clic
+  - Historique des livraisons par client (toutes les tournées passées)
+  - Indicateur de livraisons réussies / retardées par client
+  - Catégories de clients : prioritaire, standard, occasionnel, ponctuel
+  - Notes et commentaires par client
+
+2.2 Gestion des véhicules
+  - CRUD complet
+  - Champs : ID, immatriculation, type (camionnette/fourgon/poids lourd/moto),
+    capacité kg, capacité m³, vitesse max km/h, coût par km (€), dépôt assigné,
+    statut (disponible/en tournée/maintenance/hors service), chauffeur assigné
+  - Import/export CSV
+  - Tableau de bord par véhicule : charge actuelle, kilométrage total, coût cumulé
+  - Historique complet des tournées par véhicule
+  - Alertes maintenance préventive (kilométrage seuil configurable)
+  - Simulation de panne : marquer un véhicule comme indisponible et recalculer
+
+2.3 Gestion des dépôts
+  - Plusieurs dépôts simultanés avec noms, adresses, GPS
+  - Assignation véhicule → dépôt
+  - Heures d'ouverture par dépôt
+  - Capacité de stockage par dépôt
+
+2.4 Gestion des scénarios
+  - Sauvegarder un scénario complet (clients + véhicules + contraintes + algo)
+  - Charger un scénario sauvegardé
+  - Comparer deux scénarios côte à côte
+  - Bibliothèque de scénarios prédéfinis (démo : 10 / 50 / 100 clients)
+  - Dupliquer et modifier un scénario existant
+  - Nommer et annoter les scénarios
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BLOC 3 — MOTEUR D'OPTIMISATION IA (CŒUR DU PROJET — 15 pts)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+3.1 Algorithme 1 — Glouton (Nearest Neighbor)
+  - Calcul matrice de distances haversine (GPS réels)
+  - Construction de tournée greedy : client non visité le plus proche
+  - Respect de la contrainte de capacité (kg et m³)
+  - Multi-véhicules : distribution automatique
+  - Sortie : liste ordonnée par véhicule + métriques
+  - Temps d'exécution mesuré via time.perf_counter() (ms)
+
+3.2 Algorithme 2 — 2-opt (Amélioration locale)
+  - Initialisation depuis solution glouton ou solution aléatoire
+  - Inversion de segments pour éliminer les croisements
+  - Enregistrement de chaque amélioration (courbe de convergence)
+  - Condition d'arrêt : no-improvement ou max_iterations (configurable)
+  - Variante Or-opt disponible (déplacement d'un segment)
+  - Gain % vs glouton affiché en temps réel
+  - Temps d'exécution mesuré via time.perf_counter() (ms)
+
+3.3 Algorithme 3 — OR-Tools Google (VRP Solver)
+  - Modélisation VRP complète avec OR-Tools Routing Library
+  - Contraintes : capacité kg, fenêtres temporelles, multi-dépôts
+  - Stratégie initiale : PATH_CHEAPEST_ARC
+  - Méta-heuristique : GUIDED_LOCAL_SEARCH
+  - Limite de temps CPU configurable (défaut 30s, max 300s)
+  - Extraction et formatage de la solution optimale
+  - Temps d'exécution mesuré via time.perf_counter() (ms)
+
+3.4 Tableau de comparaison des 3 algorithmes
+  - Distance totale (km)
+  - Durée totale estimée (h:mm) — incluant coefficient trafic × météo
+  - Coût carburant total (€)
+  - Taux de respect des fenêtres horaires (%)
+  - Retard moyen par livraison (min)
+  - Temps CPU de l'algorithme (ms) — via time.perf_counter()
+  - Gain relatif vs algorithme glouton (%)
+  - Taux d'utilisation moyen de la flotte (%)
+  - Mise en évidence automatique de la meilleure solution (toutes métriques)
+
+  Cibles de qualité (issues du CDC) :
+    Distance    : OR-Tools < 2-opt < Glouton (toujours)
+    Gain 2-opt  : entre 5% et 20% vs glouton
+    Respect horaires : > 85% avec OR-Tools en conditions normales
+    Temps CPU   : Glouton < 1s | 2-opt < 10s | OR-Tools < 30s
+
+3.5 Configuration avancée du moteur IA
+  - Sélection individuelle ou comparaison des 3
+  - Paramètre : limite temps OR-Tools
+  - Paramètre : iterations max 2-opt
+  - Paramètre : priorité (minimiser distance / coût / retards)
+  - Mode « Rapide » (glouton uniquement) vs mode « Optimal » (OR-Tools)
+  - Lancement en arrière-plan (QThread non bloquant)
+  - Annulation du calcul en cours
+
+3.6 Fonctionnalités d'optimisation avancées
+  - Optimisation en temps réel simulé : recalcul si un véhicule tombe en panne
+  - Réaffectation dynamique : redistribuer les livraisons d'un véhicule indisponible
+  - Optimisation partielle : re-optimiser une zone géographique uniquement
+  - Contrainte de retour au dépôt ou fin en un point arbitraire
+  - Support des livraisons avec ramassages simultanés (pickup & delivery)
+  - Priorité client intégrée dans le coût de la solution
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BLOC 4 — SIMULATION TRAFIC & MÉTÉO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  NOTE IMPORTANTE : Le trafic et la météo sont des paramètres de simulation
+  choisis manuellement par l'utilisateur via l'interface. Aucune API externe
+  n'est utilisée. Ce sont des coefficients multiplicateurs appliqués aux
+  temps de trajet calculés par les algorithmes.
+
+4.1 Simulation du trafic (sélection manuelle dans l'interface)
+  - 4 niveaux prédéfinis : Fluide ×1.0 | Chargé ×1.3 | Heure de pointe ×1.7 | Accident ×2.2
+  - Mode aléatoire : coefficient entre 1.0 et 2.5 (distribution uniforme)
+  - Mode personnalisé : coefficient libre (1.0 → 5.0)
+  - Trafic par zone géographique (North/South/Center)
+  - Trafic par heure de la journée (courbe horaire configurable)
+  - Simulation d'accident sur un arc spécifique (zone noire sur la carte)
+
+4.2 Simulation météo (sélection manuelle dans l'interface)
+  - 5 conditions : Ensoleillé ×1.0 | Pluie légère ×1.1 | Pluie forte ×1.25 | Neige ×1.6 | Verglas ×2.0
+  - Combinaison automatique : coefficient final = trafic × météo
+  - Icônes météo dans l'interface
+  - Impact visuel sur la carte (overlay coloré selon condition)
+
+4.3 Contraintes opérationnelles
+  - Capacité poids (kg) par véhicule
+  - Capacité volume (m³) par véhicule
+  - Fenêtres horaires strictes par client (issues du dataset Solomon : READY_TIME / DUE_TIME)
+  - Fenêtres horaires souples avec pénalité de retard
+  - Priorité client (livraison prioritaire en premier)
+  - Temps de service par client (SERVICE_TIME dans Solomon)
+  - Pause obligatoire pour le chauffeur (ex : 30min après 4h de conduite)
+  - Distance maximale par tournée (limiter le rayon d'action)
+  - Nombre maximum de clients par véhicule (configurable)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BLOC 5 — VISUALISATION CARTOGRAPHIQUE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+5.1 Carte interactive
+  - Affichage OpenStreetMap via QWebEngineView + Leaflet.js
+  - Marqueurs différenciés : dépôt (entrepôt), client actif (pin coloré),
+    client non assigné (gris), client livré (check vert), client en retard (rouge)
+  - Marqueur numéroté = ordre de visite dans la tournée
+  - Polylines colorées par véhicule (palette de 10 couleurs distinctes)
+  - Clustering automatique des marqueurs aux niveaux de zoom élevés
+  - Popup au clic : nom client, adresse, demande, ETA, statut
+  - Zoom + / Zoom - / Recentrer sur le dépôt / Recentrer sur tous les points
+  - Basculer entre plusieurs couches : standard / satellite / dark
+  - Overlay trafic : zones colorées selon les conditions simulées
+
+5.2 Interactions carte
+  - Sélectionner un client sur la carte pour voir sa fiche
+  - Faire glisser un marqueur pour modifier ses coordonnées GPS
+  - Tracer un polygone pour sélectionner un groupe de clients (zone selection)
+  - Mesure de distance entre deux points (outil de mesure)
+  - Capture d'écran de la carte (incluse dans les rapports PDF)
+  - Mode plein écran de la carte
+
+5.3 Analyse géographique
+  - Heatmap de densité de livraisons (zones chaudes)
+  - Cercle de rayon autour du dépôt (visualisation de la zone de couverture)
+  - Clustering géographique K-means pour suggérer des zones de tournée
+  - Isochrones : zones atteignables en X minutes depuis le dépôt
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BLOC 6 — DASHBOARD ANALYTIQUE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+6.1 KPIs temps réel (6 cartes)
+  - Distance totale (km)
+  - Coût total (€)
+  - Nombre de livraisons planifiées / réalisées
+  - Retard moyen (minutes)
+  - Taux de respect des fenêtres horaires (%)
+  - Taux d'utilisation moyen de la flotte (%)
+
+6.2 Graphiques analytiques (8 graphiques)
+  - Graphique 1 : Barres groupées comparaison 3 algorithmes (distance, coût, durée)
+  - Graphique 2 : Courbe de convergence 2-opt (amélioration/itération)
+  - Graphique 3 : Camembert répartition livraisons par véhicule
+  - Graphique 4 : Scatter plot nb clients vs temps CPU (scalabilité)
+  - Graphique 5 : Évolution des performances sur 30 jours (courbe historique)
+  - Graphique 6 : Barres empilées coût carburant vs coût retards par journée
+  - Graphique 7 : Radar chart profil de performance (6 dimensions)
+  - Graphique 8 : Histogramme distribution des retards par tranche horaire
+
+6.3 Analyse comparative
+  - Comparaison de deux tournées sélectionnées
+  - Comparaison avant/après application d'un scénario trafic
+  - Comparaison scénario A vs scénario B
+  - Tableau croisé dynamique filtrable par date / algorithme / véhicule
+
+6.4 Historique et traçabilité
+  - Toutes les optimisations enregistrées en BDD (date, heure, algo, métriques)
+  - Filtres : par date, par algorithme, par nombre de clients, par véhicule
+  - Export de l'historique en CSV
+  - Graphique de tendance des performances dans le temps
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BLOC 7 — MODULE IA DE TRADUCTION (10 pts)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+7.1 Traduction des contenus logistiques
+  - Langues : Français (FR), Anglais (EN), Arabe (AR), Espagnol (ES), Allemand (DE)
+  - Contenus traduisibles : feuille de route complète, rapport de tournée,
+    alertes et notifications, fiches véhicules, descriptions de contraintes,
+    messages d'erreur de l'application, noms et adresses de clients
+
+7.2 Interface de traduction
+  - Layout 2 colonnes (source | traduit)
+  - Sélecteurs de langue avec drapeaux
+  - Bouton "Inverser les langues"
+  - Bouton "Charger dernière feuille de route"
+  - Bouton "Charger dernier rapport"
+  - Progression animée pendant la traduction (QProgressBar)
+  - Affichage côte à côte source / traduit
+
+7.3 Qualité et historique
+  - Score de qualité : pourcentage affiché + étoiles (1–5)
+  - Métrique BLEU simplifiée (n-gram overlap)
+  - Bouton "Valider la traduction" (feedback utilisateur)
+  - Bouton "Rejeter et retraduire"
+  - Historique SQLite : 50 dernières traductions
+  - Export de la traduction en TXT ou en annexe du rapport PDF
+
+7.4 Mode hors-ligne
+  - Dictionnaire de termes logistiques intégré (500+ termes FR/EN/AR)
+  - Traduction des mots-clés métier sans connexion internet
+  - Indicateur visuel : "mode hors-ligne" vs "mode API"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BLOC 8 — GÉNÉRATION DE RAPPORTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+8.1 Types de rapports
+  - Feuille de route (par véhicule) : liste ordonnée des arrêts + ETA + instructions
+  - Rapport de tournée : résumé complet avec métriques
+  - Rapport comparatif algorithmes : les 3 algorithmes côte à côte
+  - Journal des opérations : logs horodatés de toutes les actions
+  - Rapport client : historique de toutes ses livraisons
+  - Rapport véhicule : utilisation, kilométrage, coût cumulé
+  - Rapport mensuel : synthèse de performance sur un mois
+
+8.2 Formats d'export
+  - CSV : toutes les données tabulaires
+  - TXT : feuille de route lisible
+  - PDF : rapport mise en page professionnelle avec logo + carte
+  - JSON : données brutes pour intégration externe
+
+8.3 Planification des rapports
+  - Rapport automatique quotidien (configurable)
+  - Envoi par email (configuration SMTP)
+  - Archivage automatique dans un dossier local
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BLOC 9 — SUIVI EN TEMPS RÉEL (SIMULATION)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+9.1 Tableau de bord opérationnel live
+  - Statut en temps réel de chaque véhicule (En transit / À l'arrêt / Livraison)
+  - Position simulée sur la carte (avancement dans la tournée)
+  - Prochain arrêt prévu + ETA
+  - Livraisons confirmées vs en attente vs retardées
+  - Alerte automatique si retard > seuil configurable (5 min par défaut)
+
+9.2 Gestion des événements imprévus
+  - Marquer une livraison comme effectuée
+  - Marquer une livraison comme échouée (client absent, accès impossible)
+  - Signaler un retard et recalculer l'ETA des arrêts suivants
+  - Simuler la panne d'un véhicule → recalcul automatique redistribution
+  - Ajouter une livraison urgente en cours de tournée → ré-optimisation
+
+9.3 Notifications et alertes
+  - Alerte retard (seuil configurable)
+  - Alerte capacité dépassée
+  - Alerte fenêtre horaire imminente (15 min avant fermeture)
+  - Alerte maintenance véhicule (kilométrage atteint)
+  - Notification de fin de tournée
+  - Centre de notifications (QDockWidget dédié, historique des alertes)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BLOC 10 — INTELLIGENCE ARTIFICIELLE AVANCÉE (AU-DELÀ DU CDC)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+10.1 Prédiction de retards
+  - Modèle ML (régression) pour prédire le retard probable d'une livraison
+  - Entrées : heure de départ, coefficient trafic, coefficient météo, distance,
+    historique du client (données accumulées en SQLite)
+  - Sortie : retard estimé en minutes + intervalle de confiance
+  - Affichage dans la feuille de route : badge "Risque de retard"
+  - Données d'entraînement : historique des tournées sauvegardées en BDD
+
+10.2 Recommandation intelligente de scénario
+  - Suggère automatiquement la meilleure combinaison trafic/météo/algo
+  - Basé sur l'historique des tournées passées (BDD SQLite)
+  - Justification textuelle de la recommandation
+
+10.3 Détection d'anomalies
+  - Détecte les livraisons statistiquement anormales (coût, distance, retard)
+  - Méthode : Z-score ou IsolationForest (scikit-learn) — pas d'entraînement requis
+  - Alerte visuelle dans le dashboard
+  - Rapport d'anomalies hebdomadaire
+
+10.4 Clustering géographique des clients
+  - Algorithme K-means (scikit-learn) sur les coordonnées GPS des clients
+  - Pas d'entraînement requis — fonctionne directement sur les données chargées
+  - Suggestion automatique de zones de tournée
+  - Visualisation des clusters sur la carte
+
+10.5 Prévision de la demande
+  - Analyse des tendances de livraison sur les données historiques (BDD SQLite)
+  - Prévision du nombre de livraisons sur les 7 prochains jours
+  - Graphique de prévision dans le dashboard
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BLOC 11 — GESTION DES FICHIERS & PERSISTANCE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+11.1 Base de données locale SQLite
+  - Tables : User, Depot, Client, Vehicule, Tournee, Arret, TraductionHistorique,
+    Log, Notification, Scenario, AlgoResult, AnomaliEvent
+  - Migrations automatiques à la mise à jour
+  - Sauvegarde automatique toutes les 5 minutes
+  - Export complet de la BDD (dump JSON)
+  - Import d'une BDD depuis un fichier (restauration)
+
+11.2 Gestion de fichiers
+  - Import CSV Solomon VRPTW (mapping automatique colonnes → BDD)
+  - Import CSV véhicules (avec validation et rapport d'erreurs)
+  - Import Excel Real-World VRP via pandas (conversion auto en CSV)
+  - Import JSON scénarios complets
+  - Export CSV de n'importe quelle table
+  - Export JSON de l'état complet de l'application
+  - Sélecteur de répertoire d'export configurable (QFileDialog)
+  - Vérification de l'intégrité des fichiers importés
+
+11.3 Logging
+  - Tous les événements loggés : connexion, création, modification, suppression,
+    lancement algo, résultats algo, traductions, exports, erreurs
+  - Niveaux : INFO, WARNING, ERROR, CRITICAL
+  - Fichier log rotatif (7 jours, 10 MB max par fichier)
+  - Visualisation des logs dans l'interface (écran Journal)
+  - Filtres sur les logs : niveau, date, utilisateur, action
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BLOC 12 — PARAMÈTRES & CONFIGURATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+12.1 Configuration IA
+  - Algorithme par défaut
+  - Limite temps CPU OR-Tools (5s → 300s)
+  - Itérations max 2-opt (100 → 5000)
+  - Priorité d'optimisation : minimiser distance / coût / retards / mixte
+  - Poids des critères (pondération multi-objectif)
+
+12.2 Configuration traduction
+  - API préférée (DeepL / Google / LibreTranslate)
+  - Clé API (champ protégé)
+  - Langue source par défaut
+  - Langue cible par défaut
+  - Activation du mode hors-ligne
+
+12.3 Configuration carte
+  - Fournisseur de tuiles (OSM / CartoDB Dark / CartoDB Light)
+  - Zoom initial par défaut
+  - Afficher/masquer les labels des clients
+  - Afficher/masquer les numéros d'ordre
+  - Couleurs personnalisées par véhicule
+
+12.4 Configuration système
+  - Chemin de la BDD SQLite
+  - Répertoire d'export par défaut
+  - Intervalle de sauvegarde automatique
+  - Thème de l'interface (dark / light) via QSS StyleSheets
+  - Langue de l'interface (FR / EN)
+  - Notifications activées/désactivées par type
+  - Seuil d'alerte retard (minutes)
+  - Seuil maintenance kilométrage
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BLOC 13 — UX & ERGONOMIE (RÈGLES NON NÉGOCIABLES)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+13.1 Navigation
+  - Sidebar rétractable (220px ↔ 56px icônes seules) via QDockWidget ou QStackedWidget
+  - Raccourcis clavier via QShortcut : Ctrl+N (nouvelle tournée), Ctrl+S (sauvegarder),
+    F5 (rafraîchir), Échap (fermer panel), Ctrl+Z (annuler), F11 (plein écran)
+  - Breadcrumb de navigation toujours visible
+  - Mémorisation du dernier écran visité à la reconnexion (QSettings)
+
+13.2 Feedback utilisateur
+  - Réponse visuelle < 100ms sur tout bouton (hover + active state via QSS)
+  - QProgressBar ou QMovie spinner pour tout calcul > 200ms
+  - Toast notifications (coin bas-droit, auto-dismiss 3s, couleur selon type)
+  - Empty states avec illustration + message + bouton d'action
+  - Validation en temps réel des champs de formulaire (QValidator)
+  - QMessageBox de confirmation avant toute action destructive (suppression, reset)
+
+13.3 Accessibilité
+  - Tooltips sur tous les boutons icône (400ms de délai) via setToolTip()
+  - Contraste suffisant sur tous les textes (WCAG AA)
+  - Navigation clavier complète (Tab, Enter, Échap)
+  - Messages d'erreur explicites
+
+13.4 Mode démonstration
+  - Bouton "Charger données démo" visible depuis l'accueil
+  - 3 scénarios de démo prêts issus du dataset Solomon :
+      → 10 clients  : 10 premières lignes de C101.txt
+      → 50 clients  : 50 premières lignes de R101.txt
+      → 100 clients : instance complète RC101.txt
+  - Mode démo totalement autonome (aucune connexion internet requise)
+  - Indicateur visuel "MODE DÉMO" dans la QStatusBar
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+RÉCAPITULATIF — INPUTS / DATASETS / TECHNOLOGIES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+RÉSUMÉ DES INPUTS :
+  (A) Clients       → CSV Solomon VRPTW (C101 / R101 / RC101)
+  (B) Véhicules     → CSV manuel ou saisie dans l'interface
+  (C) Dépôt         → Saisie manuelle (GPS Casablanca par défaut)
+  (D) Trafic        → Sélection manuelle dans l'interface (coefficient × )
+  (E) Météo         → Sélection manuelle dans l'interface (coefficient × )
+  (F) Paramètres IA → Saisie dans les settings (temps CPU, itérations...)
+
+DATASETS UTILISÉS :
+  1. Solomon VRPTW Benchmark — http://w.cba.neu.edu/~msolomon/problems.htm
+     → Scénarios démo 10 / 50 / 100 clients | fenêtres horaires | demandes
+  2. Real-World VRP (Žunić 2019) — https://data.4tu.nl/datasets/1e23b9d7-...
+     → GPS réels | contraintes réelles | validation des algorithmes
+
+MODULES IA À IMPLÉMENTER DIRECTEMENT EN PyQt6 :
+  1. Algorithme Glouton (bloc 3.1) — aucun dataset requis
+  2. Algorithme 2-opt (bloc 3.2) — aucun dataset requis
+  3. Algorithme OR-Tools / VRP (bloc 3.3) — aucun dataset requis
+  4. Clustering K-means géographique (bloc 5.3) — scikit-learn sur GPS clients
+  5. Traduction automatique FR/EN/AR (bloc 7.1) — API deep-translator
+  6. Prédiction de retards (bloc 10.1) — historique BDD SQLite
+  7. Recommandation de scénario (bloc 10.2) — historique BDD SQLite
+  8. Détection d'anomalies (bloc 10.3) — scikit-learn IsolationForest
+  9. Prévision de la demande (bloc 10.5) — historique BDD SQLite
+
+TECHNOLOGIES POUR L'IMPLÉMENTATION FINALE :
+  Python / PyQt6   : ortools, PyQt6, PyQt6-WebEngine (carte Leaflet),
+                     matplotlib (FigureCanvasQTAgg), deep-translator,
+                     networkx, pandas, openpyxl, reportlab, sqlite3,
+                     scikit-learn, QSS StyleSheets
+
+
+╔══════════════════════════════════════════════════════════════════════════════════╗
+║  Ce document est la référence complète pour le développement de                ║
+║  CityPulse Logistics. Toute fonctionnalité listée ici doit être                ║
+║  implémentée directement dans l'interface finale (PyQt6).                      ║
+║  Aucun prototype intermédiaire — développement direct production.              ║
+╚══════════════════════════════════════════════════════════════════════════════════╝
