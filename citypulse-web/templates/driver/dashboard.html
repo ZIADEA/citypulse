@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block content %}
+
+<!-- En-tête -->
+<div class="mb-6 flex items-center justify-between">
+  <div>
+    <h1 class="text-2xl font-bold text-slate-800">Mes tournées du jour</h1>
+    <p class="text-slate-500 text-sm mt-0.5">{{ today|date:"l d F Y" }}</p>
+  </div>
+  <a href="/driver/history/"
+     class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg transition font-medium">
+    📅 Historique
+  </a>
+</div>
+
+<!-- Résumé rapide -->
+{% if routes %}
+<div class="grid grid-cols-3 gap-4 mb-6">
+  <div class="bg-white rounded-xl shadow px-4 py-3 text-center">
+    <div class="text-2xl font-bold text-blue-600">{{ routes|length }}</div>
+    <div class="text-xs text-slate-500 mt-0.5">Tournée(s)</div>
+  </div>
+  <div class="bg-white rounded-xl shadow px-4 py-3 text-center">
+    <div class="text-2xl font-bold text-slate-800">
+      {% with total=0 %}
+        {% for r in routes %}{% with n=r.stops_json|length %}{{ n }}{% endwith %}{% endfor %}
+      {% endwith %}
+    </div>
+    <div class="text-xs text-slate-500 mt-0.5">Arrêt(s) total</div>
+  </div>
+  <div class="bg-white rounded-xl shadow px-4 py-3 text-center">
+    <div class="text-2xl font-bold text-emerald-600">
+      {% for r in routes %}{% for s in r.stops_json %}{% if s.status == "livre" %}✓{% endif %}{% endfor %}{% endfor %}
+    </div>
+    <div class="text-xs text-slate-500 mt-0.5">Livrés</div>
+  </div>
+</div>
+
+<!-- Cartes de tournée -->
+<div class="space-y-4">
+  {% for route in routes %}
+  <a href="/driver/route/{{ route.id }}/"
+     class="block bg-white rounded-xl shadow hover:shadow-lg transition-shadow">
+    <!-- Header carte -->
+    <div class="px-5 pt-4 pb-3 border-b border-slate-100 flex items-start justify-between">
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="text-lg font-bold text-slate-800">Tournée #{{ route.id }}</span>
+          <span class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">
+            {{ route.stops_json|length }} arrêt(s)
+          </span>
+        </div>
+        <div class="text-sm text-slate-500 mt-1 flex items-center gap-1.5">
+          🚛 {{ route.vehicle_id_ext|default:"Véhicule non assigné" }}
+        </div>
+      </div>
+      <svg class="w-5 h-5 text-slate-400 mt-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+      </svg>
+    </div>
+
+    <!-- Liste arrêts (aperçu 3 premiers) -->
+    <div class="px-5 py-3 space-y-2">
+      {% for stop in route.stops_json %}
+      {% if forloop.counter <= 3 %}
+      <div class="flex items-center gap-3">
+        <span class="w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold
+          {% if stop.status == 'livre' %}bg-emerald-500 text-white
+          {% elif stop.status == 'en_cours' %}bg-blue-500 text-white
+          {% elif stop.status == 'echec' %}bg-red-500 text-white
+          {% else %}bg-slate-200 text-slate-600{% endif %}">
+          {{ forloop.counter }}
+        </span>
+        <div class="flex-1 min-w-0">
+          <span class="text-sm font-medium text-slate-700 truncate block">{{ stop.client_name }}</span>
+          <span class="text-xs text-slate-400 truncate block">{{ stop.address }}</span>
+        </div>
+        <span class="text-xs text-slate-500 flex-shrink-0">{{ stop.time_window }}</span>
+      </div>
+      {% endif %}
+      {% endfor %}
+      {% if route.stops_json|length > 3 %}
+      <div class="text-xs text-slate-400 pl-8">+ {{ route.stops_json|length|add:"-3" }} autre(s) arrêt(s)</div>
+      {% endif %}
+    </div>
+
+    <!-- Barre de progression -->
+    {% with total=route.stops_json|length %}
+    <div class="px-5 pb-4">
+      <div class="flex items-center justify-between text-xs text-slate-500 mb-1">
+        <span>Progression</span>
+        <span>
+          {% with done=0 %}
+            {% for s in route.stops_json %}{% if s.status == "livre" %}✓{% endif %}{% endfor %}
+            livré(s)
+          {% endwith %}
+        </span>
+      </div>
+      <div class="w-full bg-slate-100 rounded-full h-1.5">
+        <div class="bg-emerald-500 h-1.5 rounded-full"
+             style="width: {% widthratio route.stops_json|length route.stops_json|length 100 %}%"></div>
+      </div>
+    </div>
+    {% endwith %}
+
+  </a>
+  {% endfor %}
+</div>
+
+{% else %}
+<!-- État vide -->
+<div class="bg-white rounded-xl shadow px-6 py-14 text-center">
+  <div class="text-5xl mb-4">🗺️</div>
+  <div class="text-slate-700 font-semibold text-lg">Aucune tournée prévue aujourd'hui</div>
+  <div class="text-slate-400 text-sm mt-2">
+    Les tournées sont synchronisées depuis l'application desktop CityPulse.
+  </div>
+  <a href="/driver/history/" class="mt-4 inline-block text-blue-600 text-sm hover:underline">
+    Voir l'historique des tournées passées →
+  </a>
+</div>
+{% endif %}
+
+{% endblock %}

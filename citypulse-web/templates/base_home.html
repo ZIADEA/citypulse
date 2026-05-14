@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block content %}
+
+<!-- Titre -->
+<div class="mb-6">
+  <h1 class="text-2xl font-bold text-slate-800">Tableau de bord</h1>
+  <p class="text-slate-500 text-sm mt-1">Portail de synchronisation CityPulse &mdash; connecte le desktop aux chauffeurs et clients</p>
+</div>
+
+<!-- KPI cards -->
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+  <div class="bg-white rounded-xl shadow p-5 flex items-center gap-4">
+    <div class="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600 text-xl font-bold">T</div>
+    <div>
+      <div class="text-2xl font-bold text-slate-800">{{ route_count }}</div>
+      <div class="text-sm text-slate-500">Tournees synchronisees</div>
+    </div>
+  </div>
+  <div class="bg-white rounded-xl shadow p-5 flex items-center gap-4">
+    <div class="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600 text-xl font-bold">L</div>
+    <div>
+      <div class="text-2xl font-bold text-slate-800">{{ delivery_count }}</div>
+      <div class="text-sm text-slate-500">Livraisons suivies</div>
+    </div>
+  </div>
+  <div class="bg-white rounded-xl shadow p-5 flex items-center gap-4">
+    <div class="w-12 h-12 rounded-xl bg-violet-100 flex items-center justify-center text-violet-600 text-xl font-bold">U</div>
+    <div>
+      <div class="text-2xl font-bold text-slate-800">{{ user_count }}</div>
+      <div class="text-sm text-slate-500">Utilisateurs actifs</div>
+    </div>
+  </div>
+</div>
+
+<!-- Deux colonnes -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+  <!-- Dernières tournees -->
+  <div class="bg-white rounded-xl shadow">
+    <div class="px-5 py-4 border-b flex items-center justify-between">
+      <h2 class="font-semibold text-slate-800">Dernières tournees</h2>
+      <a href="/driver/" class="text-xs text-blue-600 hover:underline">Voir tout</a>
+    </div>
+    <div class="divide-y">
+      {% for route in recent_routes %}
+      <div class="px-5 py-3 flex items-center justify-between text-sm">
+        <div>
+          <span class="font-medium text-slate-700">Tournee #{{ route.id }}</span>
+          <span class="text-slate-400 ml-2">{{ route.planned_date }}</span>
+        </div>
+        <span class="text-slate-500">Vehicule {{ route.vehicle_id_ext }}</span>
+      </div>
+      {% empty %}
+      <div class="px-5 py-4 text-sm text-slate-400">
+        Aucune tournee pour l'instant.<br>
+        <span class="text-xs">Exportez des routes depuis le desktop (Parametres &rarr; Django).</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Dernières livraisons -->
+  <div class="bg-white rounded-xl shadow">
+    <div class="px-5 py-4 border-b flex items-center justify-between">
+      <h2 class="font-semibold text-slate-800">Suivi livraisons</h2>
+      <a href="/client/" class="text-xs text-blue-600 hover:underline">Voir tout</a>
+    </div>
+    <div class="divide-y">
+      {% for t in recent_deliveries %}
+      <div class="px-5 py-3 flex items-center justify-between text-sm">
+        <span class="font-medium text-slate-700">{{ t.order_ref }}</span>
+        <span class="px-2 py-0.5 rounded-full text-xs font-medium
+          {% if t.status == 'delivered' %}bg-emerald-100 text-emerald-700
+          {% elif t.status == 'failed' %}bg-red-100 text-red-700
+          {% else %}bg-blue-100 text-blue-700{% endif %}">
+          {{ t.status }}
+        </span>
+      </div>
+      {% empty %}
+      <div class="px-5 py-4 text-sm text-slate-400">
+        Aucune livraison suivie.<br>
+        <span class="text-xs">Les chauffeurs confirment les livraisons depuis leur tableau de bord.</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+</div>
+
+<!-- Comment utiliser -->
+<div class="mt-6 bg-blue-50 border border-blue-200 rounded-xl p-5">
+  <h3 class="font-semibold text-blue-800 mb-2">Comment connecter le desktop</h3>
+  <ol class="text-sm text-blue-700 space-y-1 list-decimal list-inside">
+    <li>Ouvrir l'application CityPulse desktop</li>
+    <li>Aller dans <strong>Parametres &rarr; Django</strong></li>
+    <li>URL : <code class="bg-blue-100 px-1 rounded">http://127.0.0.1:8000</code> &mdash; Cle : deja configuree</li>
+    <li>Cliquer <strong>Test connexion</strong> puis <strong>Exporter clients</strong> ou <strong>Exporter routes</strong></li>
+  </ol>
+</div>
+
+{% endblock %}

@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="mb-5">
+  <h1 class="text-2xl font-bold text-slate-800">Historique</h1>
+  <p class="text-slate-500 text-sm mt-0.5">Tournees des 30 derniers jours</p>
+</div>
+
+<div class="bg-white rounded-xl shadow divide-y">
+  {% for route in routes %}
+  <a href="/driver/route/{{ route.id }}/"
+     class="flex items-center justify-between px-5 py-3 hover:bg-slate-50 transition">
+    <div>
+      <span class="font-medium text-slate-800">Tournee #{{ route.id }}</span>
+      <span class="text-slate-400 text-sm ml-2">{{ route.planned_date }}</span>
+    </div>
+    <span class="text-slate-500 text-sm">Vehicule {{ route.vehicle_id_ext|default:"—" }}</span>
+  </a>
+  {% empty %}
+  <div class="px-5 py-8 text-center text-slate-400 text-sm">Aucun historique disponible.</div>
+  {% endfor %}
+</div>
+
+{% endblock %}

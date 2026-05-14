@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="mb-4">
+  <a href="/client/" class="text-sm text-blue-600 hover:underline">← Mes commandes</a>
+</div>
+
+<div class="max-w-lg mx-auto space-y-4">
+
+  <!-- Carte commande -->
+  <div class="bg-white rounded-xl shadow p-5">
+    <div class="flex items-center justify-between mb-3">
+      <h1 class="text-lg font-bold text-slate-800">Suivi de commande</h1>
+      <span class="text-xs px-3 py-1 rounded-full font-bold
+        {% if tracking.status == 'livre' %}bg-emerald-100 text-emerald-700
+        {% elif tracking.status == 'en_cours' %}bg-blue-100 text-blue-700
+        {% elif tracking.status == 'echec' %}bg-red-100 text-red-600
+        {% else %}bg-slate-100 text-slate-600{% endif %}">
+        {% if tracking.status == 'livre' %}✓ Livré
+        {% elif tracking.status == 'en_cours' %}⏳ En cours
+        {% elif tracking.status == 'echec' %}✗ Échec
+        {% else %}📦 En attente{% endif %}
+      </span>
+    </div>
+    <div class="font-mono text-slate-600 text-sm bg-slate-50 px-3 py-2 rounded-lg">
+      {{ tracking.order_ref }}
+    </div>
+  </div>
+
+  <!-- Timeline de progression -->
+  <div class="bg-white rounded-xl shadow p-5">
+    <h2 class="text-sm font-semibold text-slate-700 mb-4">Progression</h2>
+    <div class="relative pl-6">
+      <!-- Ligne verticale -->
+      <div class="absolute left-2 top-2 bottom-2 w-0.5 bg-slate-200"></div>
+
+      <!-- Étape 1 : Commande reçue -->
+      <div class="relative mb-5">
+        <div class="absolute -left-6 w-4 h-4 rounded-full bg-emerald-500 border-2 border-white shadow"></div>
+        <div class="text-sm font-medium text-slate-700">Commande reçue</div>
+        <div class="text-xs text-slate-400">Enregistrée dans le système</div>
+      </div>
+
+      <!-- Étape 2 : Assignée au chauffeur -->
+      <div class="relative mb-5">
+        <div class="absolute -left-6 w-4 h-4 rounded-full border-2 border-white shadow
+          {% if tracking.status != 'pending' %}bg-emerald-500{% else %}bg-slate-300{% endif %}"></div>
+        <div class="text-sm font-medium
+          {% if tracking.status != 'pending' %}text-slate-700{% else %}text-slate-400{% endif %}">
+          Assignée au chauffeur
+        </div>
+        {% if tracking.driver_first_name %}
+        <div class="text-xs text-slate-400">🧑 {{ tracking.driver_first_name }}</div>
+        {% endif %}
+      </div>
+
+      <!-- Étape 3 : En cours de livraison -->
+      <div class="relative mb-5">
+        <div class="absolute -left-6 w-4 h-4 rounded-full border-2 border-white shadow
+          {% if tracking.status == 'en_cours' or tracking.status == 'livre' %}bg-emerald-500
+          {% else %}bg-slate-300{% endif %}"></div>
+        <div class="text-sm font-medium
+          {% if tracking.status == 'en_cours' or tracking.status == 'livre' %}text-slate-700
+          {% else %}text-slate-400{% endif %}">
+          En cours de livraison
+        </div>
+        {% if tracking.eta and tracking.status == 'en_cours' %}
+        <div class="text-xs text-blue-600 font-medium">🕐 ETA : {{ tracking.eta|date:"d/m/Y à H:i" }}</div>
+        {% endif %}
+      </div>
+
+      <!-- Étape 4 : Livré / Échec -->
+      <div class="relative">
+        <div class="absolute -left-6 w-4 h-4 rounded-full border-2 border-white shadow
+          {% if tracking.status == 'livre' %}bg-emerald-500
+          {% elif tracking.status == 'echec' %}bg-red-500
+          {% else %}bg-slate-300{% endif %}"></div>
+        <div class="text-sm font-medium
+          {% if tracking.status == 'livre' %}text-emerald-700
+          {% elif tracking.status == 'echec' %}text-red-600
+          {% else %}text-slate-400{% endif %}">
+          {% if tracking.status == 'livre' %}✓ Livraison confirmée
+          {% elif tracking.status == 'echec' %}✗ Échec de livraison
+          {% else %}Livraison{% endif %}
+        </div>
+        {% if tracking.status == 'livre' and tracking.eta %}
+        <div class="text-xs text-slate-400">{{ tracking.eta|date:"d/m/Y à H:i" }}</div>
+        {% endif %}
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Infos complémentaires -->
+  <div class="bg-white rounded-xl shadow p-5 space-y-2">
+    <h2 class="text-sm font-semibold text-slate-700 mb-2">Informations</h2>
+    {% if tracking.driver_first_name %}
+    <div class="flex items-center gap-2 text-sm text-slate-600">
+      <span class="text-slate-400 w-28 flex-shrink-0">Chauffeur</span>
+      <span class="font-medium">{{ tracking.driver_first_name }}</span>
+    </div>
+    {% endif %}
+    {% if tracking.eta %}
+    <div class="flex items-center gap-2 text-sm text-slate-600">
+      <span class="text-slate-400 w-28 flex-shrink-0">ETA</span>
+      <span class="font-medium">{{ tracking.eta|date:"d/m/Y à H:i" }}</span>
+    </div>
+    {% endif %}
+    <div class="flex items-center gap-2 text-sm text-slate-600">
+      <span class="text-slate-400 w-28 flex-shrink-0">Mise à jour</span>
+      <span>{{ tracking.last_update|date:"d/m/Y à H:i" }}</span>
+    </div>
+    <div class="flex items-center gap-2 text-sm text-slate-600">
+      <span class="text-slate-400 w-28 flex-shrink-0">Référence</span>
+      <code class="font-mono text-xs bg-slate-50 px-2 py-0.5 rounded">{{ tracking.order_ref }}</code>
+    </div>
+  </div>
+
+</div>
+
+{% endblock %}

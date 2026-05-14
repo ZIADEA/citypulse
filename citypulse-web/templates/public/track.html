@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Suivi livraison &mdash; CityPulse</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body class="bg-slate-100 min-h-screen flex flex-col items-center justify-center p-4">
+
+  <div class="w-full max-w-md space-y-4">
+
+    <!-- Logo -->
+    <div class="text-center">
+      <span class="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-slate-900 text-white font-bold text-lg">CP</span>
+      <div class="text-sm text-slate-500 mt-1">CityPulse Logistics</div>
+    </div>
+
+    <!-- Carte de suivi -->
+    <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
+      <div class="px-6 py-5 border-b">
+        <div class="text-xs text-slate-400 mb-1">Reference commande</div>
+        <div class="font-mono font-semibold text-slate-800">{{ tracking.order_ref }}</div>
+      </div>
+
+      <div class="px-6 py-5 space-y-3">
+        <div class="flex items-center justify-between">
+          <span class="text-sm text-slate-500">Statut</span>
+          <span class="px-3 py-1 rounded-full text-sm font-semibold
+            {% if tracking.status == 'livre' or tracking.status == 'delivered' %}bg-emerald-100 text-emerald-700
+            {% elif tracking.status == 'echec' or tracking.status == 'failed' %}bg-red-100 text-red-700
+            {% elif tracking.status == 'en_cours' or tracking.status == 'in_progress' %}bg-blue-100 text-blue-700
+            {% else %}bg-slate-100 text-slate-600{% endif %}">
+            {% if tracking.status == 'livre' or tracking.status == 'delivered' %}Livre
+            {% elif tracking.status == 'echec' or tracking.status == 'failed' %}Echec
+            {% elif tracking.status == 'en_cours' or tracking.status == 'in_progress' %}En cours
+            {% else %}En attente{% endif %}
+          </span>
+        </div>
+        {% if tracking.eta %}
+        <div class="flex items-center justify-between">
+          <span class="text-sm text-slate-500">Heure estimee</span>
+          <span class="text-sm font-medium text-slate-800">{{ tracking.eta|date:"H:i" }}</span>
+        </div>
+        {% endif %}
+        <div class="flex items-center justify-between">
+          <span class="text-sm text-slate-500">Chauffeur</span>
+          <span class="text-sm font-medium text-slate-800">{{ driver_name }}</span>
+        </div>
+        <div class="flex items-center justify-between">
+          <span class="text-sm text-slate-500">Derniere maj</span>
+          <span class="text-sm text-slate-500">{{ tracking.last_update|date:"d/m H:i" }}</span>
+        </div>
+      </div>
+
+      <div id="mini-map" class="h-40 w-full"></div>
+    </div>
+
+    <p class="text-center text-xs text-slate-400">Suivi public &mdash; CityPulse Logistics</p>
+  </div>
+
+  <script>
+  const map = L.map('mini-map', {zoomControl: false, dragging: false, scrollWheelZoom: false})
+              .setView([33.5731, -7.5898], 12);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+  L.marker([33.5731, -7.5898]).addTo(map);
+  </script>
+</body>
+</html>

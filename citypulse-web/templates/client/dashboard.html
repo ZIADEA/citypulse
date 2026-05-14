@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block content %}
+
+<!-- En-tête -->
+<div class="mb-6">
+  <h1 class="text-2xl font-bold text-slate-800">Mes commandes</h1>
+  <p class="text-slate-500 text-sm mt-0.5">Suivi de vos livraisons en temps réel</p>
+</div>
+
+<!-- Résumé statuts -->
+{% if tracks %}
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+  {% with livre=0 en_cours=0 attente=0 echec=0 %}
+  <div class="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 text-center">
+    <div class="text-xl font-bold text-emerald-600">
+      {% for t in tracks %}{% if t.status == "livre" %}✓{% endif %}{% endfor %}
+    </div>
+    <div class="text-xs text-emerald-700 font-medium mt-0.5">Livrées</div>
+  </div>
+  <div class="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-center">
+    <div class="text-xl font-bold text-blue-600">
+      {% for t in tracks %}{% if t.status == "en_cours" %}⏳{% endif %}{% endfor %}
+    </div>
+    <div class="text-xs text-blue-700 font-medium mt-0.5">En cours</div>
+  </div>
+  <div class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-center">
+    <div class="text-xl font-bold text-slate-600">
+      {% for t in tracks %}{% if t.status == "pending" %}·{% endif %}{% endfor %}
+    </div>
+    <div class="text-xs text-slate-600 font-medium mt-0.5">En attente</div>
+  </div>
+  <div class="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-center">
+    <div class="text-xl font-bold text-red-500">
+      {% for t in tracks %}{% if t.status == "echec" %}✗{% endif %}{% endfor %}
+    </div>
+    <div class="text-xs text-red-600 font-medium mt-0.5">Échec</div>
+  </div>
+  {% endwith %}
+</div>
+{% endif %}
+
+<!-- Liste des commandes -->
+<div class="bg-white rounded-xl shadow divide-y">
+  {% for t in tracks %}
+  <a href="/client/track/{{ t.order_ref }}/"
+     class="flex items-center justify-between px-5 py-4 hover:bg-slate-50 transition group">
+
+    <div class="flex items-center gap-3">
+      <!-- Icône statut -->
+      <div class="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0
+        {% if t.status == 'livre' %}bg-emerald-100 text-emerald-600
+        {% elif t.status == 'en_cours' %}bg-blue-100 text-blue-600
+        {% elif t.status == 'echec' %}bg-red-100 text-red-500
+        {% else %}bg-slate-100 text-slate-500{% endif %}">
+        {% if t.status == 'livre' %}✓
+        {% elif t.status == 'en_cours' %}⏳
+        {% elif t.status == 'echec' %}✗
+        {% else %}📦{% endif %}
+      </div>
+
+      <div>
+        <div class="font-semibold text-slate-800 font-mono text-sm">{{ t.order_ref }}</div>
+        <div class="text-xs text-slate-500 mt-0.5 flex items-center gap-2">
+          {% if t.driver_first_name %}
+          <span>🧑 Chauffeur : {{ t.driver_first_name }}</span>
+          {% endif %}
+          {% if t.eta %}
+          <span>·</span>
+          <span>🕐 ETA : {{ t.eta|date:"d/m H:i" }}</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <span class="text-xs px-3 py-1 rounded-full font-semibold
+        {% if t.status == 'livre' %}bg-emerald-100 text-emerald-700
+        {% elif t.status == 'en_cours' %}bg-blue-100 text-blue-700
+        {% elif t.status == 'echec' %}bg-red-100 text-red-600
+        {% else %}bg-slate-100 text-slate-600{% endif %}">
+        {% if t.status == 'livre' %}Livré
+        {% elif t.status == 'en_cours' %}En cours
+        {% elif t.status == 'echec' %}Échec
+        {% else %}En attente{% endif %}
+      </span>
+      <svg class="w-4 h-4 text-slate-300 group-hover:text-slate-500 transition"
+           fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+      </svg>
+    </div>
+
+  </a>
+  {% empty %}
+  <div class="px-5 py-14 text-center">
+    <div class="text-4xl mb-3">📦</div>
+    <div class="text-slate-600 font-medium">Aucune commande en cours</div>
+    <div class="text-slate-400 text-sm mt-1">Vos livraisons apparaîtront ici dès leur prise en charge.</div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Lien suivi public -->
+{% if tracks %}
+<div class="mt-4 text-center text-xs text-slate-400">
+  💡 Vous pouvez aussi suivre une commande sans vous connecter via
+  <code class="bg-slate-100 px-1 py-0.5 rounded">/track/&lt;référence&gt;/</code>
+</div>
+{% endif %}
+
+{% endblock %}

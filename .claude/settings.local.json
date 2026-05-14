@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c ' *)",
+      "Bash(dir C:\\\\Users\\\\djeri\\\\Documents\\\\VISUALSTUDIOCODE\\\\projetbakass\\\\desktopprojet\\\\Tour\\\\app\\\\ui *)",
+      "Bash(python -c \"print\\(sum\\(1 for _ in open\\(r'c:\\\\Users\\\\djeri\\\\Documents\\\\VISUALSTUDIOCODE\\\\projetbakass\\\\desktopprojet\\\\Tour\\\\app\\\\ui\\\\optimization_widget.py'\\)\\)\\)\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('app/ui/optimization_widget.py'\\).read\\(\\)\\); print\\('OK'\\)\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('app/ui/optimization_widget.py', encoding='utf-8'\\).read\\(\\)\\); print\\('OK'\\)\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('app/ui/scenarios_widget.py', encoding='utf-8'\\).read\\(\\)\\); print\\('OK'\\)\")",
+      "Bash(python -c \"from app.services.optimization_service import save_plan, save_result; print\\('OK'\\)\")",
+      "Bash(python -c \"import mistralai; print\\('mistralai', mistralai.__version__\\)\")",
+      "Bash(python -c \"import statsmodels; print\\('statsmodels', statsmodels.__version__\\)\")",
+      "Bash(python -m pip show mistralai)",
+      "Bash(python -c \"import loguru\")",
+      "Bash(python manage.py migrate --run-syncdb)",
+      "Bash(python manage.py runserver 8000 --noreload)",
+      "Bash(dir \"c:\\\\Users\\\\djeri\\\\Documents\\\\VISUALSTUDIOCODE\\\\projetbakass\\\\desktopprojet\\\\Tour\" /B)",
+      "Bash(pdflatex -interaction=nonstopmode rapport.tex)",
+      "PowerShell(Set-Location \"c:\\\\Users\\\\djeri\\\\Documents\\\\VISUALSTUDIOCODE\\\\projetbakass\\\\desktopprojet\\\\Tour\"; & \"C:\\\\Users\\\\djeri\\\\AppData\\\\Local\\\\Programs\\\\MiKTeX\\\\miktex\\\\bin\\\\x64\\\\pdflatex.exe\" -interaction=nonstopmode rapport.tex; $exitCode = $LASTEXITCODE; Get-Content rapport.log -Tail 60; Write-Host \"Exit: $exitCode\")",
+      "PowerShell(Set-Location \"c:\\\\Users\\\\djeri\\\\Documents\\\\VISUALSTUDIOCODE\\\\projetbakass\\\\desktopprojet\\\\Tour\"; Select-String -Path rapport.log -Pattern \"^!\" | Select-Object -First 20; Write-Host \"---\"; Select-String -Path rapport.log -Pattern \"Error|error\" | Where-Object { $_.Line -notmatch \"Overfull|overfull|rerun|Warning\" } | Select-Object -First 15)"
+    ]
+  }
+}

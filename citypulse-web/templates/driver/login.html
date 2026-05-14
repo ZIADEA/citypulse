@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Espace Chauffeur &mdash; CityPulse</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-slate-900 flex items-center justify-center p-4">
+
+  <div class="w-full max-w-sm">
+
+    <!-- Logo -->
+    <div class="text-center mb-8">
+      <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-blue-600 text-white text-2xl font-bold mb-4 shadow-lg">
+        CP
+      </div>
+      <h1 class="text-2xl font-bold text-white">Espace Chauffeur</h1>
+      <p class="text-slate-400 text-sm mt-1">CityPulse Logistics</p>
+    </div>
+
+    <!-- Carte login -->
+    <div class="bg-slate-800 rounded-2xl shadow-2xl p-8 border border-slate-700">
+
+      <!-- Icone vehicule -->
+      <div class="flex items-center gap-3 mb-6 pb-5 border-b border-slate-700">
+        <div class="w-10 h-10 rounded-xl bg-blue-900 flex items-center justify-center text-xl">
+          🚛
+        </div>
+        <div>
+          <div class="text-white font-semibold text-sm">Connectez-vous</div>
+          <div class="text-slate-400 text-xs">Acces a vos tournees du jour</div>
+        </div>
+      </div>
+
+      <!-- Erreur -->
+      {% if error %}
+      <div class="mb-5 bg-red-900/40 border border-red-700 rounded-xl px-4 py-3 text-sm text-red-300 flex items-start gap-2">
+        <span class="mt-0.5">⚠</span>
+        <span>{{ error }}</span>
+      </div>
+      {% endif %}
+
+      <!-- Formulaire -->
+      <form method="post" class="space-y-4">
+        {% csrf_token %}
+
+        <div>
+          <label class="block text-sm font-medium text-slate-300 mb-1.5">Identifiant</label>
+          <input type="text" name="username" autocomplete="username" autofocus required
+                 placeholder="souleymane.diallo"
+                 class="w-full bg-slate-700 border border-slate-600 text-white rounded-xl px-4 py-2.5 text-sm
+                        placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
+                        transition">
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-slate-300 mb-1.5">Mot de passe</label>
+          <input type="password" name="password" autocomplete="current-password" required
+                 placeholder="••••••••"
+                 class="w-full bg-slate-700 border border-slate-600 text-white rounded-xl px-4 py-2.5 text-sm
+                        placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
+                        transition">
+        </div>
+
+        <button type="submit"
+                class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl py-3 text-sm
+                       transition-colors shadow-lg shadow-blue-900/40 mt-2">
+          Se connecter &rarr;
+        </button>
+      </form>
+    </div>
+
+    <!-- Lien vers espace client -->
+    <div class="text-center mt-5">
+      <span class="text-slate-500 text-sm">Vous etes client ?</span>
+      <a href="/client/login/" class="text-blue-400 hover:text-blue-300 text-sm font-medium ml-1 transition">
+        Espace Client &rarr;
+      </a>
+    </div>
+
+    <p class="text-center text-slate-600 text-xs mt-6">
+      CityPulse Logistics &mdash; Application de gestion de tournees
+    </p>
+  </div>
+
+</body>
+</html>

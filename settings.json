@@ -1,0 +1,129 @@
+{
+  "company": {
+    "name": "CityPulse Logistics",
+    "address": "Casablanca, Maroc",
+    "phone": "+212 625508821",
+    "email": "djeryala@gmail.com",
+    "currency": "MAD",
+    "timezone": "Africa/Casablanca",
+    "logo_path": "assets/logo.png"
+  },
+  "map": {
+    "provider": "Standard",
+    "default_lat": 37.5731,
+    "default_lon": -7.5898,
+    "default_zoom": 12,
+    "default_layer": "Standard",
+    "vehicle_colors": [
+      "#1A6CF6",
+      "#00FF88",
+      "#FF8C00",
+      "#8B5CF6",
+      "#FF4757",
+      "#00D4FF",
+      "#FFB800",
+      "#E91E63",
+      "#4CAF50",
+      "#9C27B0"
+    ],
+    "show_labels": true,
+    "show_order": true
+  },
+  "reports": {
+    "theme_color": "#1565C0",
+    "header_text": "CityPulse Logistics",
+    "footer_text": "",
+    "include_logo": true,
+    "output_dir": "C:/Users/djeri/Desktop",
+    "scheduled": [
+      {
+        "time": "08:00",
+        "type": "driver_performance",
+        "enabled": true
+      }
+    ],
+    "paper_size": "A4",
+    "language": "fr",
+    "include_qr_code": false,
+    "include_signature_block": true,
+    "schedule": {
+      "enabled": true,
+      "directory": "C:/Users/djeri/Desktop/testapp",
+      "hour": 18,
+      "minute": 0
+    }
+  },
+  "notifications": {
+    "enabled": true,
+    "expiry_warning_days": 30,
+    "sound_enabled": false,
+    "auto_dismiss_seconds": 5,
+    "daily_summary": true,
+    "daily_hour": 18
+  },
+  "system": {
+    "theme": "dark",
+    "ui_lang": "fr",
+    "alert_threshold_min": 5,
+    "maint_km": 9996.0
+  },
+  "osrm": {
+    "url": "http://router.project-osrm.org",
+    "timeout": 6,
+    "fallback_to_haversine": true
+  },
+  "mistral": {
+    "model": "mistral-large-latest",
+    "language": "fr",
+    "max_tokens": 1024,
+    "temperature": 0.7
+  },
+  "translation": {
+    "api": "google",
+    "provider": "google",
+    "default_source": "fr",
+    "default_target": "en",
+    "offline_mode": false
+  },
+  "optimization": {
+    "default": "greedy",
+    "ortools_time_limit": 30,
+    "twoopt_max_iterations": 1000,
+    "objective": "minimize_distance",
+    "weights_distance": 1.0,
+    "weights_cost": 0.25,
+    "weights_delay": 0.7500000000000002,
+    "weights_co2": 0.0,
+    "vrp_mode_default": "reload",
+    "use_clustering": false,
+    "departure_hour": 8,
+    "legal_break_enabled": true
+  },
+  "algorithm": {
+    "default": "greedy",
+    "ortools_time_limit": 30,
+    "twoopt_max_iterations": 1000,
+    "objective": "minimize_distance",
+    "use_clustering": false,
+    "legal_break_enabled": true
+  },
+  "django": {
+    "url": "http://127.0.0.1:8000",
+    "sync_eta_from_tracking": true,
+    "sync_history": [
+      {
+        "at": "2026-05-12T16:22:14",
+        "action": "pull_confirmations",
+        "status": "0 MAJ"
+      }
+    ]
+  },
+  "website": {
+    "django_url": "http://127.0.0.1:8000",
+    "api_key_encrypted": "",
+    "sync_enabled": true,
+    "sync_interval_minutes": 15
+  },
+  "notif_daily_summary": true,
+  "notif_daily_hour": 18
+}
